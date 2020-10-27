@@ -8,11 +8,17 @@ DIR=$2
 list(){
     echo -n  $(ls $DIR                                    | \
         xargs -I %% echo "{\\\"filename\\\":\\\"%%\\\"}," | \
-        xargs                                             | \ 
+        xargs                                             | \
         sed 's/^/[/;s/.$/]/'                              | \
-        jq)                                                   
-}                                                             
-RESPONSE="HTTP/1.1 200 OK\r\nConnection: keep-alive\r\nContent-Type: application/json\r\n\r\n$(list)\r\n"
-while { echo -en "$RESPONSE"; } | nc -l "${1:-8080}"; do
-  echo "================================================"
+        jq)
+}
+
+make_response() {
+    body=$(list)
+    echo -en "HTTP/1.1 200 OK\r\nConnection: keep-alive\r\nContent-Type: application/json\r\nContent-Length: $(echo $body | wc -c)\r\n\r\n
+$body\r\n\r\n"
+}
+echo -en "$(make_response)"
+while { echo -en "$(make_response)"; } | nc -l "${1:-8080}"; do
+    echo "================================================"
 done
